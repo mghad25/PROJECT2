@@ -1,0 +1,524 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive retirement simulator by Mohammad, Mostafa and Karim: three plans to financial independence, Monte Carlo simulation, crash lab and editable assumptions.">
+<title>Freedom Age Simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+html, body { margin: 0; }
+[hidden] { display: none !important; }
+img { max-width: 100%; }
+/* Layout: a trading-desk console. Thesis band (live freedom age) on top, controls left, live charts right, then comparison, crash lab, retirement test, assumptions and method. */
+:root {
+  --bg: #0A1120; --panel: #111B2E; --panel-2: #17243B; --line: #24344F;
+  --fg: #E9EEF6; --muted: #93A1B8; --accent: #E7B54A; --accent-ink: #1A1305;
+  --good: #4FC08D; --bad: #E2675E;
+  --dubai: #E7B54A; --germany: #7EA6F0; --lebanon: #4FC08D; --custom: #C78BEA;
+  --band-1: rgba(231,181,74,.16); --band-2: rgba(231,181,74,.30);
+  --display: 'Instrument Serif', Georgia, serif;
+  --sans: 'IBM Plex Sans', 'Segoe UI', Arial, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) {
+  --bg: #F3F5F9; --panel: #FFFFFF; --panel-2: #EEF1F7; --line: #D5DCE8;
+  --fg: #101A2C; --muted: #56627A; --accent: #A6740F; --accent-ink: #FFFFFF;
+  --good: #1E8A57; --bad: #C2453B;
+  --dubai: #A6740F; --germany: #2F5FB8; --lebanon: #1E8A57; --custom: #8A3FB5;
+  --band-1: rgba(166,116,15,.12); --band-2: rgba(166,116,15,.24);
+  color-scheme: light; } }
+:root[data-theme="light"] {
+  --bg: #F3F5F9; --panel: #FFFFFF; --panel-2: #EEF1F7; --line: #D5DCE8;
+  --fg: #101A2C; --muted: #56627A; --accent: #A6740F; --accent-ink: #FFFFFF;
+  --good: #1E8A57; --bad: #C2453B;
+  --dubai: #A6740F; --germany: #2F5FB8; --lebanon: #1E8A57; --custom: #8A3FB5;
+  --band-1: rgba(166,116,15,.12); --band-2: rgba(166,116,15,.24);
+  color-scheme: light; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-block: 28px 64px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 22px; }
+.eyebrow { font-family: var(--mono); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+h1, h2 { font-family: var(--display); font-weight: 400; margin: 0; text-wrap: balance; }
+h2 { font-size: 30px; line-height: 1.1; }
+h3 { margin: 0; font: 600 12px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+p { margin: 0; }
+
+.hero { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: end; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.hero h1 { font-size: clamp(44px, 7vw, 92px); line-height: .95; }
+.hero h1 .age { color: var(--accent); font-style: italic; }
+.hero .sub { margin-top: 10px; color: var(--muted); max-width: 60ch; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.stat { background: var(--panel); padding: 12px 14px; min-width: 0; }
+.stat .k { font-size: 12px; color: var(--muted); }
+.stat .v { font-family: var(--mono); font-size: 21px; font-variant-numeric: tabular-nums; }
+.v.good { color: var(--good); } .v.bad { color: var(--bad); }
+.conf { display: inline-flex; gap: 4px; margin-top: 6px; }
+.conf button { font: 500 12px var(--mono); color: var(--muted); background: transparent; border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; cursor: pointer; }
+.conf button[aria-pressed="true"] { color: var(--accent-ink); background: var(--accent); border-color: var(--accent); }
+
+.tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.tab { font: 500 14px var(--sans); color: var(--fg); background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 8px 14px; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; }
+.tab .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
+.tab[aria-pressed="true"] { border-color: var(--c); box-shadow: inset 0 0 0 1px var(--c); background: var(--panel-2); }
+button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.main { display: grid; grid-template-columns: 340px minmax(0,1fr); gap: 22px; align-items: start; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 18px; min-width: 0; }
+.controls { display: flex; flex-direction: column; gap: 16px; }
+.group { display: flex; flex-direction: column; gap: 12px; }
+.ctl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; align-items: center; }
+.ctl label { font-size: 13.5px; }
+.ctl output { font-family: var(--mono); font-size: 13.5px; font-variant-numeric: tabular-nums; color: var(--accent); }
+.ctl input[type=range] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.check { display: flex; gap: 8px; align-items: flex-start; font-size: 13.5px; }
+.check input { accent-color: var(--accent); margin-top: 3px; }
+.alloc-total { font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.alloc-total.off { color: var(--bad); }
+.swatch { display: inline-block; width: 9px; height: 9px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+.allocbar { display: flex; height: 16px; border-radius: 4px; overflow: hidden; }
+
+.charts { display: flex; flex-direction: column; gap: 22px; min-width: 0; }
+.chart-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; margin-bottom: 8px; }
+.chart-head p { margin-top: 4px; color: var(--muted); font-size: 13.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 14px; height: 8px; border-radius: 2px; margin-right: 6px; vertical-align: middle; }
+svg { display: block; width: 100%; height: auto; max-width: 100%; }
+svg text { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; align-items: start; }
+.cmp { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; margin-top: 12px; }
+.cmp .card { border: 1px solid var(--line); border-top: 3px solid var(--c); border-radius: 10px; padding: 12px; background: var(--panel-2); min-width: 0; }
+.cmp .card .big { font-family: var(--display); font-size: 44px; line-height: 1; color: var(--c); }
+.cmp .card .s { font-size: 12.5px; color: var(--muted); }
+.btn { font: 600 14px var(--sans); background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+.btn.ghost { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+.tiles { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 12px; }
+.tiles div { background: var(--panel-2); border-radius: 8px; padding: 10px; min-width: 0; }
+.tiles .k { font-size: 12px; color: var(--muted); }
+.tiles .v { font-family: var(--mono); font-size: 20px; }
+.note { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+details.panel summary { cursor: pointer; font-family: var(--display); font-size: 28px; list-style: none; }
+details.panel summary::-webkit-details-marker { display: none; }
+details.panel summary::after { content: ' +'; color: var(--accent); }
+details[open].panel summary::after { content: ' −'; }
+.atable-wrap { overflow-x: auto; margin-top: 12px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 600 12px var(--mono); letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+td input[type=number] { width: 84px; font: 13.5px var(--mono); color: var(--fg); background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; }
+.method { columns: 2 320px; column-gap: 28px; margin-top: 12px; font-size: 14px; }
+.method p { margin-bottom: 10px; break-inside: avoid; }
+.method code { font-family: var(--mono); font-size: 13px; color: var(--accent); }
+.foot { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 14px; }
+
+@media (max-width: 900px) { .hero, .main, .row2 { grid-template-columns: 1fr; } }
+@media (max-width: 520px) { .cmp, .tiles { grid-template-columns: 1fr; } svg text { font-size: 20px; } }
+@media (prefers-reduced-motion: no-preference) { .pulse { animation: pulse .5s ease; } @keyframes pulse { from { opacity: .35; transform: translateY(4px); } } }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="eyebrow">Personal Finance project · Three Lebanese engineers, aged 19 and 20</div>
+
+  <section class="hero" aria-live="polite">
+    <div>
+      <h1 id="headline"><span id="hLead">Free at </span><span class="age" id="hAge">51</span></h1>
+      <p class="sub" id="hSub">Loading the model…</p>
+    </div>
+    <div class="stats">
+      <div class="stat"><div class="k">FI number (<span id="kMult">25</span> × yearly spending)</div><div class="v" id="sFi">–</div></div>
+      <div class="stat"><div class="k">Expected real return / volatility</div><div class="v" id="sRet">–</div></div>
+      <div class="stat"><div class="k">Chance of being free by target age</div><div class="v" id="sProb">–</div></div>
+      <div class="stat"><div class="k">Freedom age at chosen confidence</div><div class="v" id="sConf">–</div>
+        <div class="conf" role="group" aria-label="Confidence level"><button data-q="0.5">50%</button><button data-q="0.75">75%</button><button data-q="0.8" aria-pressed="true">80%</button><button data-q="0.9">90%</button></div></div>
+    </div>
+  </section>
+
+  <div class="tabs" role="group" aria-label="Choose a plan">
+    <button class="tab" id="tab-dubai" style="--c:var(--dubai)" aria-pressed="true"><span class="dot"></span>Mohammad · Dubai</button>
+    <button class="tab" id="tab-germany" style="--c:var(--germany)" aria-pressed="false"><span class="dot"></span>Mostafa · Germany</button>
+    <button class="tab" id="tab-lebanon" style="--c:var(--lebanon)" aria-pressed="false"><span class="dot"></span>Karim · Lebanon</button>
+    <button class="tab" id="tab-custom" style="--c:var(--custom)" aria-pressed="false"><span class="dot"></span>Build your own</button>
+  </div>
+
+  <div class="main">
+    <aside class="panel controls" aria-label="Plan settings">
+      <div class="group">
+        <h3>Career</h3>
+        <div class="ctl"><label for="salary">Starting salary at 22, per month</label><output id="o-salary"></output><input type="range" id="salary" min="500" max="10000" step="1"></div>
+        <div class="ctl"><label for="raise">Real pay rise, first 15 years</label><output id="o-raise"></output><input type="range" id="raise" min="0" max="8" step="0.5"></div>
+        <div class="ctl"><label for="start">Start investing at age</label><output id="o-start"></output><input type="range" id="start" min="20" max="40" step="1"></div>
+      </div>
+      <div class="group">
+        <h3>Saving and spending</h3>
+        <div class="ctl"><label for="save0">Savings rate at 22</label><output id="o-save0"></output><input type="range" id="save0" min="5" max="50" step="1"></div>
+        <div class="ctl"><label for="inc">Save More Tomorrow: extra points a year</label><output id="o-inc"></output><input type="range" id="inc" min="0" max="3" step="0.5"></div>
+        <div class="ctl"><label for="cap">Savings rate cap</label><output id="o-cap"></output><input type="range" id="cap" min="5" max="60" step="1"></div>
+        <div class="ctl"><label for="spend">Retirement spending, per month</label><output id="o-spend"></output><input type="range" id="spend" min="1000" max="10000" step="100"></div>
+        <div class="ctl"><label for="wr">Safe withdrawal rate</label><output id="o-wr"></output><input type="range" id="wr" min="2.5" max="5" step="0.25"></div>
+      </div>
+      <div class="group">
+        <h3>Portfolio</h3>
+        <div class="allocbar" id="allocbar" aria-hidden="true"></div>
+        <div id="allocCtls" class="group"></div>
+        <div class="alloc-total" id="allocTotal"></div>
+        <label class="check"><input type="checkbox" id="glide"><span>Glide path: move stocks to 55% over the 10 years before the target age (the extra goes to bonds)</span></label>
+      </div>
+    </aside>
+
+    <div class="charts">
+      <section class="panel">
+        <div class="chart-head">
+          <div><h2>Your portfolio, 2,000 possible futures</h2><p>Bands hold the middle 50% and 80% of simulated paths; the chart’s top cuts off the luckiest ones. The gold line is our base case, the median path.</p></div>
+          <div class="legend"><span><i style="background:var(--band-2)"></i>25–75%</span><span><i style="background:var(--band-1)"></i>10–90%</span><span><i style="background:var(--accent)"></i>Base case</span><span><i style="background:var(--muted)"></i>FI number</span></div>
+        </div>
+        <svg id="fan" viewBox="0 0 800 360" role="img" aria-label="Fan chart of portfolio value by age"></svg>
+      </section>
+      <section class="panel">
+        <div class="chart-head"><div><h2>When does freedom arrive?</h2><p>Share of simulated futures that have reached the FI number by each age.</p></div></div>
+        <svg id="prob" viewBox="0 0 800 240" role="img" aria-label="Probability of reaching financial independence by age"></svg>
+      </section>
+    </div>
+  </div>
+
+  <div class="row2">
+    <section class="panel">
+      <h2>Three of us, side by side</h2>
+      <p class="note">Base-case freedom age, chance of being on time, and the age at 80% confidence, all from the same model and default assumptions. This page runs 2,000 paths in your browser, so odds can differ by a point from the 20,000-path run in our report.</p>
+      <div class="cmp" id="cmp"></div>
+    </section>
+    <section class="panel">
+      <h2>Crash lab</h2>
+      <p class="note">Replay a 2008-style year (stocks −40%, property −45%, bonds +5%, gold +5%, crypto −70%, cash 0%) at any age and see what it does to the base case.</p>
+      <div class="ctl" style="margin-top:10px"><label for="crashAge">Crash hits at age</label><output id="o-crashAge"></output><input type="range" id="crashAge" min="25" max="64" step="1" value="45"></div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px"><button class="btn" id="crashBtn">Replay the crash</button><button class="btn ghost" id="clearBtn">Clear</button></div>
+      <div class="tiles">
+        <div><div class="k">Portfolio loss that year</div><div class="v" id="lLoss">–</div></div>
+        <div><div class="k">Freedom age after crash</div><div class="v" id="lAge">–</div></div>
+        <div><div class="k">Delay</div><div class="v" id="lDelay">–</div></div>
+      </div>
+      <p class="note" id="lNote">Try it at 30, then at 48. The same percentage loss costs more years when the portfolio is large and fewer working years remain to refill it.</p>
+    </section>
+  </div>
+
+  <section class="panel">
+    <h2>Will the money last?</h2>
+    <p class="note">Once free, we withdraw the safe withdrawal rate in year one, then the same amount adjusted for inflation, from a retirement mix of 55% stocks, 30% bonds, 10% gold and 5% cash. 2,000 simulated retirements.</p>
+    <div class="tiles" id="wTiles"></div>
+    <p class="note" id="wNote"></p>
+  </section>
+
+  <details class="panel" id="assump">
+    <summary>Assumptions you can change</summary>
+    <p class="note">Every number below feeds the whole page. Expected returns are real (after inflation) and geometric, the median growth rate. Change any of them and everything recalculates.</p>
+    <div class="atable-wrap">
+      <table>
+        <thead><tr><th>Asset</th><th>Expected real return, %</th><th>Volatility, %</th><th>Crash-lab shock, %</th></tr></thead>
+        <tbody id="aBody"></tbody>
+      </table>
+    </div>
+    <div class="ctl" style="max-width:420px;margin-top:14px"><label for="fee">Fund costs, % a year</label><output id="o-fee"></output><input type="range" id="fee" min="0" max="1.5" step="0.05" value="0.15"></div>
+    <p class="note">Correlations: stocks and property 0.7, stocks and crypto 0.4, stocks and bonds 0.1, bonds and gold 0.2, bonds and property 0.2, all others 0. <button class="btn ghost" id="resetA" style="padding:4px 10px;font-size:12.5px">Reset defaults</button></p>
+  </details>
+
+  <details class="panel">
+    <summary>How the model works</summary>
+    <div class="method">
+      <p><b>Contributions.</b> $100 a month from age 20 until 22. From 22: salary × savings rate. The rate rises by the Save More Tomorrow step each year up to the cap; salary rises by the real pay rise for 15 years, then 1% (2% for Lebanon).</p>
+      <p><b>Base case.</b> Balance<sub>t+1</sub> = Balance<sub>t</sub> × (1 + r) + contribution, with r the weighted expected real return minus fund costs. The FI number is yearly spending ÷ withdrawal rate (25× at 4%).</p>
+      <p><b>Portfolio risk.</b> Volatility comes from the full covariance matrix: <code>σ²ₚ = Σᵢ Σⱼ wᵢ wⱼ σᵢ σⱼ ρᵢⱼ</code>, so diversification lowers it below the weighted average.</p>
+      <p><b>Simulation.</b> Each year’s return is drawn from a normal distribution with mean <code>r + σ²/2</code> and standard deviation σ. That centres median growth on the base case, so volatility drag is built in. A fixed random seed keeps results repeatable.</p>
+      <p><b>Confidence ages.</b> The age by which the chosen share of the 2,000 paths has reached the FI number. The base case is the median, so it is reached on time in roughly half to 60% of futures.</p>
+      <p><b>What it leaves out.</b> Fat tails and crash clustering, random inflation, taxes on withdrawals (none in the UAE; in Germany roughly 10% more capital needed, our estimate), currency moves, and broker or FX costs. The crash lab and stress tests cover what the normal distribution misses.</p>
+    </div>
+  </details>
+
+  <p class="foot">Built by Mohammad, Mostafa and Karim for our Personal Finance course. Projections are illustrations, not financial advice. Starting salaries are assumptions from salary guides: Dubai AED 14,000 a month, Germany €50,000 a year gross, Lebanon $1,500 a month.</p>
+</div>
+
+<script>
+(() => {
+  const DEFAULT_ASSETS = [
+    { id: 'stocks', name: 'Global stocks', mu: 5.0, vol: 17, shock: -40, color: '#3E74C9' },
+    { id: 'reit', name: 'Property', mu: 3.5, vol: 20, shock: -45, color: '#3FA08A' },
+    { id: 'bonds', name: 'Bonds', mu: 1.5, vol: 6, shock: 5, color: '#9677C9' },
+    { id: 'gold', name: 'Gold', mu: 1.0, vol: 15, shock: 5, color: '#D4A03A' },
+    { id: 'crypto', name: 'Crypto', mu: 0, vol: 70, shock: -70, color: '#D25D6E' },
+    { id: 'cash', name: 'Cash', mu: 0, vol: 1, shock: 0, color: '#8C97A8' }
+  ];
+  let ASSETS = JSON.parse(JSON.stringify(DEFAULT_ASSETS));
+  const CORR = { 'stocks|reit': .7, 'stocks|bonds': .1, 'bonds|gold': .2, 'stocks|crypto': .4, 'reit|bonds': .2 };
+  const RETIRE_MIX = { stocks: 55, reit: 0, bonds: 30, gold: 10, crypto: 0, cash: 5 };
+  const N = 2000;
+  const PLAN_DEFAULTS = {
+    dubai:   { label: 'Mohammad · Dubai', color: 'var(--dubai)', target: 51, salary: 3812, raise: 3, start: 20, save0: 25, inc: 1, cap: 40, spend: 4000, wr: 4, g2: 1, alloc: { stocks: 80, reit: 5, bonds: 5, gold: 7, crypto: 3, cash: 0 } },
+    germany: { label: 'Mostafa · Germany', color: 'var(--germany)', target: 59, salary: 4750, raise: 2.5, start: 20, save0: 12, inc: 1, cap: 20, spend: 3500, wr: 4, g2: 1, alloc: { stocks: 65, reit: 5, bonds: 20, gold: 8, crypto: 2, cash: 0 } },
+    lebanon: { label: 'Karim · Lebanon', color: 'var(--lebanon)', target: 65, salary: 1500, raise: 5, start: 20, save0: 15, inc: 1, cap: 25, spend: 2500, wr: 4, g2: 2, alloc: { stocks: 55, reit: 5, bonds: 15, gold: 20, crypto: 0, cash: 5 } }
+  };
+  const PLANS = JSON.parse(JSON.stringify(PLAN_DEFAULTS));
+  PLANS.custom = Object.assign(JSON.parse(JSON.stringify(PLAN_DEFAULTS.dubai)), { label: 'Your plan', color: 'var(--custom)' });
+
+  const $ = id => document.getElementById(id);
+  const fmtMoney = v => v >= 1e6 ? '$' + (v / 1e6).toFixed(2) + 'M' : v >= 1e3 ? '$' + Math.round(v / 1e3) + 'K' : '$' + Math.round(v);
+  let current = 'dubai', crash = null, glide = false, conf = 0.8, fee = 0.15;
+
+  // ---------- model ----------
+  function stats(alloc) {
+    const tot = ASSETS.reduce((s, a) => s + (alloc[a.id] || 0), 0) || 1;
+    const w = ASSETS.map(a => (alloc[a.id] || 0) / tot);
+    const r = ASSETS.reduce((s, a, i) => s + w[i] * a.mu / 100, 0) - fee / 100;
+    let v = 0;
+    for (let i = 0; i < ASSETS.length; i++) for (let j = 0; j < ASSETS.length; j++) {
+      const a = ASSETS[i], b = ASSETS[j];
+      const c = i === j ? 1 : (CORR[a.id + '|' + b.id] ?? CORR[b.id + '|' + a.id] ?? 0);
+      v += w[i] * w[j] * (a.vol / 100) * (b.vol / 100) * c;
+    }
+    const shock = ASSETS.reduce((s, a, i) => s + w[i] * a.shock / 100, 0);
+    return { r, sd: Math.sqrt(v), w, shock };
+  }
+  function allocAt(p, age) {
+    if (!glide) return p.alloc;
+    const startG = p.target - 10;
+    if (age < startG) return p.alloc;
+    const f = Math.min(1, (age - startG) / 10);
+    const eq0 = p.alloc.stocks, eq = eq0 > 55 ? eq0 + (55 - eq0) * f : eq0;
+    return Object.assign({}, p.alloc, { stocks: eq, bonds: (p.alloc.bonds || 0) + (eq0 - eq) });
+  }
+  function yearly(p) { // per-year stats from age 20 to 79
+    const out = [];
+    for (let age = 20; age < 80; age++) out.push(stats(allocAt(p, age)));
+    return out;
+  }
+  function contributions(p) {
+    const c = []; let sal = p.salary * 12, s = p.save0 / 100;
+    for (let age = 20; age < 80; age++) {
+      let x;
+      if (age < 22) x = 1200;
+      else { x = sal * s; sal *= 1 + (age - 22 < 15 ? p.raise : p.g2) / 100; s = Math.min(p.cap / 100, s + p.inc / 100); }
+      c.push(age < p.start ? 0 : x);
+    }
+    return c;
+  }
+  const fiNumber = p => p.spend * 12 / (p.wr / 100);
+  function deterministic(p, ys, c, crashAge) {
+    const fi = fiNumber(p); let b = 0, fiAge = null, loss = null; const path = [{ age: 20, b: 0 }];
+    for (let t = 0; t < 60; t++) {
+      const age = 20 + t; let r = ys[t].r;
+      if (crashAge != null && age === crashAge) { r = ys[t].shock; loss = r; }
+      b = b * (1 + r) + c[t]; path.push({ age: age + 1, b });
+      if (fiAge == null && b >= fi) fiAge = age + 1;
+    }
+    return { path, fiAge, fi, loss };
+  }
+  function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  function normal(rand) { const u1 = rand() || 1e-12, u2 = rand(); return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * u2); }
+  function monteCarlo(p, ys, c) {
+    const fi = fiNumber(p), rand = rng(20261124), years = 55;
+    const vals = Array.from({ length: years + 1 }, () => new Float64Array(N));
+    const hit = new Float64Array(N).fill(99);
+    for (let n = 0; n < N; n++) {
+      let b = 0;
+      for (let t = 0; t < years; t++) {
+        const y = ys[t], m = y.r + y.sd * y.sd / 2;
+        b = Math.max(0, b * (1 + m + y.sd * normal(rand)) + c[t]);
+        vals[t + 1][n] = b;
+        if (hit[n] === 99 && b >= fi) hit[n] = 21 + t;
+      }
+    }
+    const q = (arr, k) => { const s = Float64Array.from(arr).sort(); return s[Math.floor(k * (s.length - 1))]; };
+    const bands = vals.map((v, i) => ({ age: 20 + i, p10: q(v, .1), p25: q(v, .25), p50: q(v, .5), p75: q(v, .75), p90: q(v, .9) }));
+    const hits = Float64Array.from(hit).sort();
+    const probBy = age => { let k = 0; for (const h of hits) { if (h <= age) k++; else break; } return k / N; };
+    const ageAt = share => { const h = hits[Math.ceil(share * N) - 1]; return h >= 99 ? null : h; };
+    return { bands, probBy, ageAt };
+  }
+  function retirementTest(wr) {
+    const st = stats(RETIRE_MIX), rand = rng(7), m = st.r + st.sd * st.sd / 2;
+    const res = {};
+    for (const yrs of [30, 40, 50]) {
+      let ok = 0;
+      for (let n = 0; n < N; n++) {
+        let b = 1, alive = true;
+        for (let t = 0; t < yrs; t++) { b = (b - wr / 100) * (1 + m + st.sd * normal(rand)); if (b <= 0) { alive = false; break; } }
+        if (alive) ok++;
+      }
+      res[yrs] = ok / N;
+    }
+    return { res, st };
+  }
+
+  // ---------- controls ----------
+  const fields = [
+    ['salary', v => '$' + Number(v).toLocaleString('en-US')], ['raise', v => v + '%'], ['start', v => v],
+    ['save0', v => v + '%'], ['inc', v => '+' + v + ' pt'], ['cap', v => v + '%'],
+    ['spend', v => '$' + Number(v).toLocaleString('en-US')], ['wr', v => Number(v).toFixed(2) + '%']
+  ];
+  const allocWrap = $('allocCtls');
+  DEFAULT_ASSETS.forEach(a => {
+    const d = document.createElement('div'); d.className = 'ctl';
+    d.innerHTML = `<label for="al-${a.id}"><span class="swatch" style="background:${a.color}"></span>${a.name}</label><output id="o-al-${a.id}"></output><input type="range" id="al-${a.id}" min="0" max="100" step="1">`;
+    allocWrap.appendChild(d);
+  });
+  function buildAssumptions() {
+    const body = $('aBody'); body.innerHTML = '';
+    ASSETS.forEach(a => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td><span class="swatch" style="background:${a.color}"></span>${a.name}</td>` +
+        ['mu', 'vol', 'shock'].map(k => `<td><input type="number" id="as-${a.id}-${k}" step="0.5" value="${a[k]}" aria-label="${a.name} ${k}"></td>`).join('');
+      body.appendChild(tr);
+    });
+    ASSETS.forEach(a => ['mu', 'vol', 'shock'].forEach(k => $(`as-${a.id}-${k}`).addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { a[k] = k === 'vol' ? Math.max(0, v) : v; refresh(); } })));
+  }
+  buildAssumptions();
+
+  function setTabs() { document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-pressed', String(t.id === 'tab-' + current))); }
+  function loadPlan(key) {
+    current = key; const p = PLANS[key]; setTabs();
+    fields.forEach(([f]) => { $(f).value = p[f]; });
+    DEFAULT_ASSETS.forEach(a => { $('al-' + a.id).value = p.alloc[a.id] || 0; });
+    refresh();
+  }
+  function onInput() {
+    if (current !== 'custom') {
+      PLANS.custom = Object.assign(JSON.parse(JSON.stringify(PLANS[current])), { label: 'Your plan', color: 'var(--custom)' });
+      current = 'custom'; setTabs();
+    }
+    const p = PLANS.custom;
+    fields.forEach(([f]) => { p[f] = Number($(f).value); });
+    DEFAULT_ASSETS.forEach(a => { p.alloc[a.id] = Number($('al-' + a.id).value); });
+    refresh();
+  }
+  fields.forEach(([f]) => $(f).addEventListener('input', onInput));
+  DEFAULT_ASSETS.forEach(a => $('al-' + a.id).addEventListener('input', onInput));
+  Object.keys(PLANS).forEach(k => $('tab-' + k).addEventListener('click', () => { crash = null; loadPlan(k); }));
+  $('crashAge').addEventListener('input', () => { if (crash != null) crash = Number($('crashAge').value); refresh(); });
+  $('crashBtn').addEventListener('click', () => { crash = Number($('crashAge').value); refresh(); });
+  $('clearBtn').addEventListener('click', () => { crash = null; refresh(); });
+  $('glide').addEventListener('change', e => { glide = e.target.checked; refresh(); });
+  $('fee').addEventListener('input', e => { fee = Number(e.target.value); refresh(); });
+  $('resetA').addEventListener('click', () => { ASSETS = JSON.parse(JSON.stringify(DEFAULT_ASSETS)); fee = 0.15; $('fee').value = 0.15; buildAssumptions(); refresh(); });
+  document.querySelectorAll('.conf button').forEach(b => b.addEventListener('click', () => {
+    conf = Number(b.dataset.q); document.querySelectorAll('.conf button').forEach(x => x.setAttribute('aria-pressed', String(x === b))); refresh();
+  }));
+
+  // ---------- drawing ----------
+  const NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent, text) { const e = document.createElementNS(NS, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; parent.appendChild(e); return e; }
+  function drawFan(det, mc, crashed) {
+    const svg = $('fan'); svg.innerHTML = '';
+    const W = 800, H = 360, L = 60, R = 16, T = 14, B = 30, maxAge = 70;
+    const pts = mc.bands.filter(b => b.age <= maxAge);
+    const detMax = Math.max(...det.path.filter(d => d.age <= maxAge).map(d => d.b));
+    const top = Math.max(det.fi * 1.8, Math.min(detMax * 1.15, det.fi * 3));
+    const step = [100e3, 250e3, 500e3, 1e6, 2e6, 2.5e6, 5e6, 10e6].find(s => top / s <= 5) || 20e6;
+    const yMax = Math.ceil(top / step) * step;
+    const x = a => L + (a - 20) / (maxAge - 20) * (W - L - R);
+    const y = v => T + (1 - Math.min(v, yMax) / yMax) * (H - T - B);
+    for (let v = 0; v <= yMax + 1; v += step) { el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--line)' }, svg); el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end' }, svg, v === 0 ? '$0' : fmtMoney(v)); }
+    for (let a = 20; a <= maxAge; a += 5) el('text', { x: x(a), y: H - 10, 'text-anchor': 'middle' }, svg, a);
+    const area = (lo, hi) => 'M' + pts.map(b => `${x(b.age)},${y(b[hi])}`).join('L') + 'L' + pts.slice().reverse().map(b => `${x(b.age)},${y(b[lo])}`).join('L') + 'Z';
+    el('path', { d: area('p10', 'p90'), fill: 'var(--band-1)' }, svg);
+    el('path', { d: area('p25', 'p75'), fill: 'var(--band-2)' }, svg);
+    el('line', { x1: L, x2: W - R, y1: y(det.fi), y2: y(det.fi), stroke: 'var(--muted)', 'stroke-dasharray': '5 5', 'stroke-width': 1.5 }, svg);
+    el('text', { x: L + 6, y: y(det.fi) - 6 }, svg, 'FI number ' + fmtMoney(det.fi));
+    const line = arr => 'M' + arr.filter(d => d.age <= maxAge).map(d => `${x(d.age)},${y(d.b)}`).join('L');
+    el('path', { d: line(det.path), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3, 'stroke-linejoin': 'round' }, svg);
+    if (crashed) {
+      el('path', { d: line(crashed.path), fill: 'none', stroke: 'var(--bad)', 'stroke-width': 2.5, 'stroke-dasharray': '7 5' }, svg);
+      el('line', { x1: x(crash), x2: x(crash), y1: T, y2: H - B, stroke: 'var(--bad)', 'stroke-opacity': .5 }, svg);
+      el('text', { x: x(crash) + 6, y: T + 12, style: 'fill:var(--bad)' }, svg, 'crash at ' + crash);
+    }
+    if (det.fiAge && det.fiAge <= maxAge) {
+      el('circle', { cx: x(det.fiAge), cy: y(det.fi), r: 6.5, fill: 'var(--accent)', stroke: 'var(--bg)', 'stroke-width': 2 }, svg);
+      el('text', { x: x(det.fiAge), y: y(det.fi) - 12, 'text-anchor': 'middle', style: 'fill:var(--fg);font-size:13px;font-weight:500' }, svg, 'free at ' + det.fiAge);
+    }
+  }
+  function drawProb(mc, target) {
+    const svg = $('prob'); svg.innerHTML = '';
+    const W = 800, H = 240, L = 46, R = 16, T = 12, B = 28, a0 = 35, a1 = 75;
+    const x = a => L + (a - a0) / (a1 - a0) * (W - L - R), y = v => T + (1 - v) * (H - T - B);
+    [0, .25, .5, .75, 1].forEach(v => { el('line', { x1: L, x2: W - R, y1: y(v), y2: y(v), stroke: 'var(--line)', 'stroke-dasharray': v === .5 ? '4 4' : '' }, svg); el('text', { x: L - 8, y: y(v) + 4, 'text-anchor': 'end' }, svg, Math.round(v * 100) + '%'); });
+    for (let a = a0; a <= a1; a += 5) el('text', { x: x(a), y: H - 8, 'text-anchor': 'middle' }, svg, a);
+    const ptsArr = []; for (let a = a0; a <= a1; a++) ptsArr.push([a, mc.probBy(a)]);
+    el('path', { d: 'M' + ptsArr.map(([a, v]) => `${x(a)},${y(v)}`).join('L') + `L${x(a1)},${y(0)}L${x(a0)},${y(0)}Z`, fill: 'var(--band-1)' }, svg);
+    el('path', { d: 'M' + ptsArr.map(([a, v]) => `${x(a)},${y(v)}`).join('L'), fill: 'none', stroke: 'var(--accent)', 'stroke-width': 3 }, svg);
+    el('line', { x1: L, x2: W - R, y1: y(conf), y2: y(conf), stroke: 'var(--good)', 'stroke-opacity': .6 }, svg);
+    el('text', { x: W - R - 4, y: y(conf) - 6, 'text-anchor': 'end', style: 'fill:var(--good)' }, svg, Math.round(conf * 100) + '% confidence');
+    if (target >= a0 && target <= a1) {
+      const v = mc.probBy(target);
+      el('line', { x1: x(target), x2: x(target), y1: T, y2: H - B, stroke: 'var(--muted)', 'stroke-dasharray': '3 4' }, svg);
+      el('circle', { cx: x(target), cy: y(v), r: 6, fill: 'var(--accent)', stroke: 'var(--bg)', 'stroke-width': 2 }, svg);
+      el('text', { x: x(target) + 10, y: y(v) + 18, style: 'fill:var(--fg);font-size:13px;font-weight:500' }, svg, Math.round(v * 100) + '% by ' + target);
+    }
+  }
+  function compareCards() {
+    const box = $('cmp'); box.innerHTML = '';
+    ['dubai', 'germany', 'lebanon'].forEach(k => {
+      const p = PLAN_DEFAULTS[k], ys = yearly(p), c = contributions(p), det = deterministic(p, ys, c, null), mc = monteCarlo(p, ys, c);
+      const a80 = mc.ageAt(0.8);
+      const d = document.createElement('div'); d.className = 'card'; d.style.setProperty('--c', p.color);
+      d.innerHTML = `<div class="s">${p.label}</div><div class="big">${det.fiAge ?? '80+'}</div><div class="s">${Math.round(mc.probBy(p.target) * 100)}% chance by ${p.target}<br>80% confident by ${a80 ?? '75+'}<br>${fmtMoney(det.fi)} target · ${(ys[0].r * 100).toFixed(1)}% real return</div>`;
+      box.appendChild(d);
+    });
+  }
+
+  // ---------- refresh ----------
+  function refresh() {
+    const p = PLANS[current];
+    fields.forEach(([f, fmt]) => { $('o-' + f).textContent = fmt($(f).value); });
+    $('o-fee').textContent = Number(fee).toFixed(2) + '%';
+    const tot = DEFAULT_ASSETS.reduce((s, a) => s + Number($('al-' + a.id).value), 0);
+    DEFAULT_ASSETS.forEach(a => { $('o-al-' + a.id).textContent = $('al-' + a.id).value + '%'; });
+    const at = $('allocTotal'); at.textContent = tot === 100 ? 'Total 100%' : `Total ${tot}%, scaled to 100% in the model`; at.classList.toggle('off', tot !== 100);
+    const bar = $('allocbar'); bar.innerHTML = '';
+    DEFAULT_ASSETS.forEach(a => { const v = Number($('al-' + a.id).value); if (v > 0) { const s = document.createElement('div'); s.style.cssText = `width:${v / (tot || 1) * 100}%;background:${a.color}`; s.title = `${a.name} ${v}%`; bar.appendChild(s); } });
+    $('o-crashAge').textContent = $('crashAge').value;
+    $('kMult').textContent = (100 / p.wr).toFixed(p.wr === 4 ? 0 : 1);
+
+    const ys = yearly(p), c = contributions(p);
+    const det = deterministic(p, ys, c, null);
+    if (current === 'custom') p.target = det.fiAge || 65;
+    const target = p.target;
+    const mc = monteCarlo(p, ys, c);
+    const crashed = crash != null ? deterministic(p, ys, c, crash) : null;
+
+    const hAge = $('hAge'); hAge.textContent = det.fiAge ?? '80';
+    $('hLead').textContent = det.fiAge ? 'Free at ' : 'Not free by ';
+    hAge.classList.remove('pulse'); void hAge.offsetWidth; hAge.classList.add('pulse');
+    $('hSub').textContent = `${p.label}: invest ${p.save0}% of a $${Number(p.salary).toLocaleString('en-US')} monthly salary from 22, rising ${p.inc} point a year to ${p.cap}%, to fund $${Number(p.spend).toLocaleString('en-US')} a month at a ${p.wr}% withdrawal rate. All amounts in today’s dollars, after inflation.`;
+    $('sFi').textContent = fmtMoney(det.fi);
+    $('sRet').textContent = `${(ys[0].r * 100).toFixed(1)}% / ${(ys[0].sd * 100).toFixed(1)}%`;
+    const pr = mc.probBy(target);
+    const sp = $('sProb'); sp.textContent = `${Math.round(pr * 100)}% by ${target}`; sp.className = 'v ' + (pr >= .5 ? 'good' : 'bad');
+    const ca = mc.ageAt(conf); $('sConf').textContent = ca ? `${ca} (${Math.round(conf * 100)}% sure)` : `after 75 at ${Math.round(conf * 100)}%`;
+
+    drawFan(det, mc, crashed);
+    drawProb(mc, target);
+
+    if (crashed) {
+      $('lLoss').textContent = (crashed.loss * 100).toFixed(1) + '%';
+      $('lAge').textContent = crashed.fiAge ?? '80+';
+      const delay = (crashed.fiAge ?? 80) - (det.fiAge ?? 80);
+      $('lDelay').textContent = delay <= 0 ? 'none' : `+${delay} yr${delay > 1 ? 's' : ''}`;
+      $('lNote').textContent = det.fiAge && crash >= det.fiAge
+        ? 'This crash comes after freedom in the base case, when withdrawals have started: the sequence-of-returns risk that our cash buffer and protective puts are for.'
+        : `A ${Math.abs(crashed.loss * 100).toFixed(1)}% fall at ${crash} moves freedom from ${det.fiAge ?? '80+'} to ${crashed.fiAge ?? '80+'}. Compare ages: the bigger the portfolio when it hits, the more years it costs.`;
+    } else { ['lLoss', 'lAge', 'lDelay'].forEach(id => $(id).textContent = '–'); }
+
+    const rt = retirementTest(p.wr);
+    $('wTiles').innerHTML = [30, 40, 50].map(y => `<div><div class="k">Lasts ${y} years</div><div class="v ${rt.res[y] >= .8 ? 'good' : 'bad'}">${Math.round(rt.res[y] * 100)}%</div></div>`).join('');
+    $('wNote').textContent = `Retirement mix: ${(rt.st.r * 100).toFixed(1)}% expected real return, ${(rt.st.sd * 100).toFixed(1)}% volatility. ${p.wr > 3.5 ? 'For a 40 to 50 year retirement, try 3.5% or lower and watch the odds rise.' : 'At this rate, even a 50 year retirement has strong odds.'}`;
+  }
+
+  compareCards();
+  loadPlan('dubai');
+})();
+</script>
+
+</body>
+</html>
